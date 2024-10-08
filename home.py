@@ -67,6 +67,17 @@ def check_out(library, isbn, cursor, library_id):
     else:
         print("Book is already checked out.")
     
+    query ='SELECT title FROM books WHERE isbn = %s'
+    cursor.execute(query, (isbn,))
+    book_title = cursor.fetchone()
+    if book_title:
+        query = 'INSERT INTO borrowed_books (borrow_date, return date) VALUES (%s, %s)'
+        borrow_date = input("Enter the date you borrowed the book: ")
+        return_date = input("Enter the date you will return the book: ")
+        cursor.execute(query, (borrow_date, return_date))
+
+
+    
 
 def return_book(library,isbn):
     if not library[isbn].is_available():
