@@ -17,7 +17,7 @@ class Book:
         query = 'INSERT INTO books (title, author_id, publication_date, isbn, availability) VALUES (%s, %s, %s, %s, %s)'
         cursor.execute(query, (self.title, self.author_id, self.publication_date, self.isbn, self.available))
         
-def add_book(library, cursor):
+def add_book(cursor):
     title = input("Enter the title of the book: ")
     author = input("Enter the author of the book: ")
     query = 'SELECT id FROM authors WHERE name = %s'
@@ -30,7 +30,6 @@ def add_book(library, cursor):
     publication_date = input("Enter the publication date of the book: ")
     isbn = input("Enter the ISBN of the book: ")
     new_book = Book(title, publication_date, isbn, author_id)
-    library[isbn] = new_book
     new_book.add_book_to_database(cursor)
 
     
@@ -86,10 +85,16 @@ def update_book_availablity(cursor, isbn):
 
     
 
-def return_book(library,isbn):
-    if not library[isbn].is_available():
-        library[isbn].available = 1
+def return_book(library,isbn,cursor):
+    isbn = isbn.strip()
+    print(f"Returning ISBN: {isbn}")
+    if isbn not in library:
+        print(f"ISBN {isbn} not found in library.")
+    if isbn in library:
+        query = 'UPDATE books SET availability = 1 WHERE isbn = %s'
+        cursor.execute(query, (isbn,))
         print(f"{library[isbn].title} has been returned.")
+
 
 
 
@@ -103,13 +108,7 @@ class User:
         self.loaned_books.append(book)
         print(f"{book.title} has been loaned to {self.name}.")
     
-    def get_user_details(self):
-        print(f"Name: {self.name}")
-        print(f"ID: {self.library_id}")
-        print("Loaned Books:")
-        for book in self.loaned_books:
-            print(f"ISBN: {book.isbn}")
-    
+
     def add_user_to_database(self, cursor):
         query = 'INSERT INTO users (name, library_id) VALUES (%s, %s)'
         cursor.execute(query, (self.name, self.library_id))
@@ -174,7 +173,7 @@ def main():
                         5. Display all books''')
                     book_choice = input("Please enter your choice: ")
                     if book_choice == '1':
-                        add_book(library, cursor)
+                        add_book(cursor)
                         conn.commit()
                     elif book_choice == '2':
                         isbn = input("Enter the ISBN of the book you'd like to borrow: ")
@@ -189,22 +188,29 @@ def main():
                         conn.commit()
                     elif book_choice == '3':
                         isbn = input("Enter the ISBN of the book you'd like to return: ")
-                        return_book(library,isbn)
+                        return_book(library,isbn,cursor)
+                        conn.commit()
                     elif book_choice == '4':
                         search_book = input("Enter the title of the book you'd like to search for: ")
-                        for isbn, book in library.items():
-                            if book.title == search_book:
-                                print(f"Title: {book.title}")
-                                print(f"Author: {book.author}")
-                                print(f"Genre: {book.genre}")
-                                print(f"Publication Date: {book.publication_date}")
-                                print(f"ISBN: {book.isbn}")
-                                if book.available:
-                                    print("Status: Available")
-                                else:
-                                    print("Status: Checked Out")
+                        query = 'SELECT * FROM books WHERE title = %s'
+                        cursor.execute(query, (search_book,))
+                        book = cursor.fetchone()
+                        if book:
+                            print(f"Title: {book[1]}")
+                            print(f"Author ID: {book[2]}")
+                            print(f"Publication Date: {book[3]}")
+                            print(f"ISBN: {book[4]}")
+                            print(f"Availability: {book[5]}")
                     elif book_choice == '5':
-                        pass
+                        query = 'SELECT * FROM books'
+                        cursor.execute(query)
+                        books = cursor.fetchall()
+                        for book in books:
+                            print(f"Title: {book[1]}")
+                            print(f"Author ID: {book[2]}")
+                            print(f"Publication Date: {book[4]}")
+                            print(f"ISBN: {book[3]}")
+                            print(f"Availability: {book[5]}")
                 elif choice == '2':
                     print('''User Operations
                             1. Add a new user
@@ -216,7 +222,21 @@ def main():
                         conn.commit()
                     elif user_choice == '2':
                         user_id = input("Enter the ID of the user you'd like to view: ")
-                        users[user_id].get_user_details()
+                        query = 'SELECT * FROM users WHERE library_id = %s'
+                        cursor.execute(query, (user_id,))
+                        user = cursor.fetchone()
+                        if user:
+                            print(f"Name: {user[1]}")
+                            print(f"ID: {user[2]}")
+                        else:
+                            print("User not found.")
+                    elif user_choice == '3':
+                        query = 'SELECT * FROM users'
+                        cursor.execute(query)
+                        users = cursor.fetchall()
+                        for user in users:
+                            print(f"Name: {user[1]}")
+                            print(f"ID: {user[2]}")
                     else:
                         print("Invalid choice. Please try again.")
                         continue
@@ -231,11 +251,20 @@ def main():
                             conn.commit()
                         elif author_choice == '2':
                             writer = input("Enter the name of the author you'd like to view: ")
-                            display_author(writer, authors)
+                            query = 'SELECT * FROM authors WHERE name = %s'
+                            cursor.execute(query, (writer,))
+                            author = cursor.fetchone()
+                            if author:
+                                display_author(writer, authors)
+                            else:
+                                print("Author not found.")
                         elif author_choice == '3':
-                            for author in authors.values():
-                                print(f"Name: {author.name}")
-                                print(f"Biography: {author.biography}")
+                            query = 'SELECT * FROM authors'
+                            cursor.execute(query) 
+                            authors = cursor.fetchall()
+                            for author in authors:
+                                print(f"Name: {author[1]}")
+                                print(f"Biography: {author[2]}")
                         else:
                             print("Invalid choice. Please try again.")
                             continue
