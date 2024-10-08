@@ -34,16 +34,39 @@ def add_book(library, cursor):
     new_book.add_book_to_database(cursor)
 
     
-def check_out(library, isbn, user, cursor):
-    query = 'SELECT availability FROM books WHERE isbn = %s'
+def check_out(library, isbn, cursor, library_id):
+    # Combine the availability check and book ID retrieval into one query
+    query = 'SELECT id, availability FROM books WHERE isbn = %s'
     cursor.execute(query, (isbn,))
-    availability = cursor.fetchone()
-    if availability[0] == 1:
-        query = 'UPDATE books SET availability = 0 WHERE isbn = %s'
-        cursor.execute(query, (isbn,))
-        print(f"{library[isbn].title} has been checked out.")
-    else:
+    book = cursor.fetchone()
+    
+    if not book:
         print("Book not found.")
+        return
+    
+    book_id, availability = book
+    
+    if availability == 1:
+        # Update the availability of the book
+        query = 'UPDATE books SET availability = 0 WHERE id = %s'
+        cursor.execute(query, (book_id,))
+        print(f"{library[isbn].title} has been checked out.")
+        
+        # Retrieve the user ID
+        query = 'SELECT id FROM users WHERE library_id = %s'
+        cursor.execute(query, (library_id,))
+        user = cursor.fetchone()
+        
+        if user:
+            user_id = user[0]
+            # Insert into borrowed_books
+            query = 'INSERT INTO borrowed_books (user_id, book_id) VALUES (%s, %s)'
+            cursor.execute(query, (user_id, book_id))
+        else:
+            print("User not found.")
+    else:
+        print("Book is already checked out.")
+    
 
 def return_book(library,isbn):
     if not library[isbn].is_available():
@@ -138,11 +161,12 @@ def main():
                     elif book_choice == '2':
                         isbn = input("Enter the ISBN of the book you'd like to borrow: ")
                         try:
-                            user_id = input("Enter your user ID: ")
+                            library_id = input("Enter your user ID: ")
                         except KeyError:
                             print("User does not exist. Please add the user first.")
                             continue
-                        check_out(library, isbn, users[user_id])
+                        check_out(library, isbn, cursor, library_id)
+                        conn.commit()
                     elif book_choice == '3':
                         isbn = input("Enter the ISBN of the book you'd like to return: ")
                         return_book(library,isbn)
@@ -160,16 +184,7 @@ def main():
                                 else:
                                     print("Status: Checked Out")
                     elif book_choice == '5':
-                        for isbn, book in library.items():
-                            print(f"Title: {book.title}")
-                            print(f"Author: {book.author}")
-                            print(f"Genre: {book.genre}")
-                            print(f"Publication Date: {book.publication_date}")
-                            print(f"ISBN: {book.isbn}")
-                            if book.available:
-                                print("Status: Available")
-                            else:
-                                print("Status: Checked Out")
+                        pass
                 elif choice == '2':
                     print('''User Operations
                             1. Add a new user
