@@ -109,11 +109,10 @@ class User:
         query = 'INSERT INTO users (name, library_id) VALUES (%s, %s)'
         cursor.execute(query, (self.name, self.library_id))
 
-def add_user(users, cursor):
+def add_user(cursor):
     name = input("Enter the name of the user: ")
     library_id = input("Enter the ID of the user: ")
     new_user = User(name, library_id)
-    users[library_id] = new_user
     new_user.add_user_to_database(cursor)
 
 
@@ -126,11 +125,10 @@ class Author:
     def add_author_to_database(self, cursor):
         query = 'INSERT INTO authors (name, biography) VALUES (%s, %s)'
         cursor.execute(query, (self.name, self.biography))
-def add_author(authors,cursor):
+def add_author(cursor):
     name = input("Enter the name of the author: ")
     biography = input("Enter the biography of the author: ")
     new_author = Author(name, biography)
-    authors[name] = new_author
     new_author.add_author_to_database(cursor)
 def display_author(writer, authors):
     for author in authors.values():
@@ -214,7 +212,7 @@ def main():
                             3. Display all users''')
                     user_choice = input("Please enter your choice: ")
                     if user_choice == '1':
-                        add_user(users, cursor)
+                        add_user(cursor)
                         conn.commit()
                     elif user_choice == '2':
                         user_id = input("Enter the ID of the user you'd like to view: ")
@@ -243,7 +241,7 @@ def main():
                             3. Display all authors''')
                         author_choice = input("Please enter your choice: ")
                         if author_choice == '1':
-                            add_author(authors,cursor)
+                            add_author(cursor)
                             conn.commit()
                         elif author_choice == '2':
                             writer = input("Enter the name of the author you'd like to view: ")
