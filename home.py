@@ -35,6 +35,8 @@ def add_book(library, cursor):
 
     
 def check_out(library, isbn, cursor, library_id):
+    isbn = isbn.strip()
+    print(f"Checking out ISBN: {isbn}")
     # Combine the availability check and book ID retrieval into one query
     query = 'SELECT id, availability FROM books WHERE isbn = %s'
     cursor.execute(query, (isbn,))
@@ -46,10 +48,15 @@ def check_out(library, isbn, cursor, library_id):
     
     book_id, availability = book
     
+    if availability == 0:
+        print("Book is already checked out.")
+        return
+    
     if availability == 1:
-        # Update the availability of the book
-        query = 'UPDATE books SET availability = 0 WHERE id = %s'
-        cursor.execute(query, (book_id,))
+        if isbn not in library:
+            print(f"ISBN {isbn} not found in library.")
+            return
+    
         print(f"{library[isbn].title} has been checked out.")
         
         # Retrieve the user ID
@@ -60,22 +67,22 @@ def check_out(library, isbn, cursor, library_id):
         if user:
             user_id = user[0]
             # Insert into borrowed_books
-            query = 'INSERT INTO borrowed_books (user_id, book_id) VALUES (%s, %s)'
-            cursor.execute(query, (user_id, book_id))
+            borrow_date = input("Enter the date you borrowed the book: ")
+            return_date = input("Enter the date you will return the book: ")
+            query = 'INSERT INTO borrowed_books (user_id, book_id,borrow_date, return_date) VALUES (%s, %s, %s, %s)'
+            cursor.execute(query, (user_id, book_id,borrow_date, return_date))
+            return book_id
+    
         else:
             print("User not found.")
+            return None
     else:
         print("Book is already checked out.")
     
-    query ='SELECT title FROM books WHERE isbn = %s'
-    cursor.execute(query, (isbn,))
-    book_title = cursor.fetchone()
-    if book_title:
-        query = 'INSERT INTO borrowed_books (borrow_date, return date) VALUES (%s, %s)'
-        borrow_date = input("Enter the date you borrowed the book: ")
-        return_date = input("Enter the date you will return the book: ")
-        cursor.execute(query, (borrow_date, return_date))
 
+def update_book_availablity(cursor, isbn):
+    query = 'UPDATE books SET availability = 0 WHERE isbn = %s'
+    cursor.execute(query, (isbn,))
 
     
 
@@ -177,6 +184,8 @@ def main():
                             print("User does not exist. Please add the user first.")
                             continue
                         check_out(library, isbn, cursor, library_id)
+                        conn.commit()
+                        update_book_availablity(cursor, isbn)
                         conn.commit()
                     elif book_choice == '3':
                         isbn = input("Enter the ISBN of the book you'd like to return: ")
