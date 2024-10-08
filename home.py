@@ -33,7 +33,7 @@ def add_book(cursor):
     new_book.add_book_to_database(cursor)
 
     
-def check_out(library, isbn, cursor, library_id):
+def check_out(isbn, cursor, library_id):
     isbn = isbn.strip()
     print(f"Checking out ISBN: {isbn}")
     # Combine the availability check and book ID retrieval into one query
@@ -52,13 +52,7 @@ def check_out(library, isbn, cursor, library_id):
         return
     
     if availability == 1:
-        if isbn not in library:
-            print(f"ISBN {isbn} not found in library.")
-            return
-    
-        print(f"{library[isbn].title} has been checked out.")
-        
-        # Retrieve the user ID
+    # Retrieve the user ID
         query = 'SELECT id FROM users WHERE library_id = %s'
         cursor.execute(query, (library_id,))
         user = cursor.fetchone()
@@ -85,15 +79,17 @@ def update_book_availablity(cursor, isbn):
 
     
 
-def return_book(library,isbn,cursor):
-    isbn = isbn.strip()
-    print(f"Returning ISBN: {isbn}")
-    if isbn not in library:
-        print(f"ISBN {isbn} not found in library.")
-    if isbn in library:
+def return_book(isbn,cursor):
+    query = 'SELECT id FROM books WHERE isbn = %s'
+    cursor.execute(query, (isbn,))
+    book = cursor.fetchone()
+    if book:
         query = 'UPDATE books SET availability = 1 WHERE isbn = %s'
         cursor.execute(query, (isbn,))
-        print(f"{library[isbn].title} has been returned.")
+        print(f"Book with ISBN {isbn} has been returned.")
+        query = 'DELETE FROM borrowed_books WHERE book_id = %s'
+        cursor.execute(query, (book[0],))
+
 
 
 
@@ -182,13 +178,13 @@ def main():
                         except KeyError:
                             print("User does not exist. Please add the user first.")
                             continue
-                        check_out(library, isbn, cursor, library_id)
+                        check_out(isbn, cursor, library_id)
                         conn.commit()
                         update_book_availablity(cursor, isbn)
                         conn.commit()
                     elif book_choice == '3':
                         isbn = input("Enter the ISBN of the book you'd like to return: ")
-                        return_book(library,isbn,cursor)
+                        return_book(isbn,cursor)
                         conn.commit()
                     elif book_choice == '4':
                         search_book = input("Enter the title of the book you'd like to search for: ")
