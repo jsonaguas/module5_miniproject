@@ -29,6 +29,12 @@ def add_book(cursor):
         return None
     publication_date = input("Enter the publication date of the book: ")
     isbn = input("Enter the ISBN of the book: ")
+    query = 'SELECT * FROM books WHERE isbn = %s'
+    cursor.execute(query, (isbn,))
+    book = cursor.fetchone()
+    if book:
+        print("Book already exists.")
+        return
     new_book = Book(title, publication_date, isbn, author_id)
     new_book.add_book_to_database(cursor)
 
@@ -36,7 +42,6 @@ def add_book(cursor):
 def check_out(isbn, cursor, library_id):
     isbn = isbn.strip()
     print(f"Checking out ISBN: {isbn}")
-    # Combine the availability check and book ID retrieval into one query
     query = 'SELECT id, availability FROM books WHERE isbn = %s'
     cursor.execute(query, (isbn,))
     book = cursor.fetchone()
@@ -65,12 +70,7 @@ def check_out(isbn, cursor, library_id):
             query = 'INSERT INTO borrowed_books (user_id, book_id,borrow_date, return_date) VALUES (%s, %s, %s, %s)'
             cursor.execute(query, (user_id, book_id,borrow_date, return_date))
             return book_id
-    
-        else:
-            print("User not found.")
-            return None
-    else:
-        print("Book is already checked out.")
+
     
 
 def update_book_availablity(cursor, isbn):
@@ -98,12 +98,7 @@ class User:
     def __init__(self, name, library_id):
         self.name = name
         self.library_id = library_id
-        self.loaned_books = []
 
-    def loan_book(self, book):
-        self.loaned_books.append(book)
-        print(f"{book.title} has been loaned to {self.name}.")
-    
 
     def add_user_to_database(self, cursor):
         query = 'INSERT INTO users (name, library_id) VALUES (%s, %s)'
@@ -144,9 +139,6 @@ def main():
     if conn is not None:
         try:
             cursor = conn.cursor()
-            library = {}
-            users = {}
-            authors = {}
             while True:
 
                 print("Welcome to the Library Management System!")
